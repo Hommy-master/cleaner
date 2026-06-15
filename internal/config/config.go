@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"cleaner/internal/util"
@@ -48,6 +49,8 @@ func (c *Config) Validate() error {
 		c.Interval = defaultIntervalSeconds
 	}
 
+	c.normalizeFiles()
+
 	for i, dir := range c.Dirs {
 		if err := util.ValidateDirPath(dir.Path); err != nil {
 			return fmt.Errorf("dirs[%d].path: %w", i, err)
@@ -55,15 +58,24 @@ func (c *Config) Validate() error {
 	}
 
 	for i, file := range c.Files {
-		if file == "" {
-			return fmt.Errorf("files[%d]: path cannot be empty", i)
-		}
 		if !util.IsAbsolutePath(file) {
 			return fmt.Errorf("files[%d]: %q must be an absolute path", i, file)
 		}
 	}
 
 	return nil
+}
+
+func (c *Config) normalizeFiles() {
+	files := make([]string, 0, len(c.Files))
+	for _, file := range c.Files {
+		file = strings.TrimSpace(file)
+		if file == "" {
+			continue
+		}
+		files = append(files, file)
+	}
+	c.Files = files
 }
 
 // IntervalDuration returns the configured interval as a duration.

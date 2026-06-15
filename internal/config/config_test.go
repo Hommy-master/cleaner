@@ -76,10 +76,24 @@ func TestValidateRelativeFilePath(t *testing.T) {
 	}
 }
 
-func TestValidateEmptyFilePath(t *testing.T) {
-	cfg := &Config{Files: []string{""}}
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected validation error for empty file path")
+func TestValidateSkipsEmptyFilePaths(t *testing.T) {
+	cfg := &Config{Files: []string{"", "  "}}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if len(cfg.Files) != 0 {
+		t.Fatalf("Files = %v, want empty", cfg.Files)
+	}
+}
+
+func TestLoadSkipsEmptyFilePaths(t *testing.T) {
+	path := writeConfigFile(t, `{"interval":10,"dirs":[],"files":["",""]}`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.Files) != 0 {
+		t.Fatalf("Files = %v, want empty after skipping blank entries", cfg.Files)
 	}
 }
 
