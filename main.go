@@ -44,7 +44,13 @@ func main() {
 	logger.Printf("cleaner started, interval=%ds, config=%s", cfg.Interval, cfgPath)
 
 	c := cleaner.New(cfg, logger)
-	c.Run()
+	runCleanup := func() {
+		logger.Printf("running cleanup task")
+		c.Run()
+	}
+
+	// Run once immediately on startup, then on each tick.
+	runCleanup()
 
 	ticker := time.NewTicker(cfg.IntervalDuration())
 	defer ticker.Stop()
@@ -55,7 +61,7 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			c.Run()
+			runCleanup()
 		case sig := <-sigCh:
 			logger.Printf("received signal %v, shutting down", sig)
 			return
