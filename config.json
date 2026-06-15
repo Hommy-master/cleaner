@@ -12,7 +12,7 @@
 			"minAgeSeconds": 1
 		},
 		{
-			"path": "C:\\Users\\1\\Videos",
+			"path": "C:\\Users\\Administrator\\Videos",
 			"ignore": [
 				"desktop.ini"
 			],
