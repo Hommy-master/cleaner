@@ -11,14 +11,16 @@ import (
 )
 
 const (
-	logFileName  = "cleaner.log"
+	logFileName   = "cleaner.log"
 	logTimeLayout = "2006-01-02 15:04:05"
 )
 
 // Logger writes timestamped logs with source file and line number.
 type Logger struct {
-	mu  sync.Mutex
-	out io.Writer
+	mu      sync.Mutex
+	out     io.Writer
+	stdout  *os.File
+	logFile *os.File
 }
 
 var (
@@ -43,7 +45,10 @@ func InitLogger(dir string) error {
 			return
 		}
 		logFile = f
-		logger = NewLogger(io.MultiWriter(os.Stdout, f))
+		logger = &Logger{
+			stdout:  os.Stdout,
+			logFile: f,
+		}
 	})
 	return loggerErr
 }
@@ -78,6 +83,19 @@ func (l *Logger) write(msg string) {
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	if l.stdout != nil || l.logFile != nil {
+		if l.stdout != nil {
+			_, _ = io.WriteString(l.stdout, lineText)
+			flushConsole(l.stdout)
+		}
+		if l.logFile != nil {
+			_, _ = io.WriteString(l.logFile, lineText)
+			_ = l.logFile.Sync()
+		}
+		return
+	}
+
 	_, _ = io.WriteString(l.out, lineText)
 }
 
