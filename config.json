@@ -9,8 +9,13 @@
 				"JianyingPro.exe",
 				"uninst.exe"
 			],
+			"minAgeSeconds": 1
+		},
+		{
+			"path": "C:\\Users\\Administrator\\Videos",
+			"ignore": [],
 			"minAgeSeconds": 3600
 		}
 	],
-	"files": []
+	"files": [""]
 }
