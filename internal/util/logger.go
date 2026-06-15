@@ -38,6 +38,8 @@ func NewLogger(w io.Writer) *Logger {
 // InitLogger configures logging to both stdout and cleaner.log in dir.
 func InitLogger(dir string) error {
 	loggerOnce.Do(func() {
+		disableQuickEdit()
+
 		logPath := filepath.Join(dir, logFileName)
 		f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
