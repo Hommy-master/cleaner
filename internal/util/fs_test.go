@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 )
 
 func TestIsAbsolutePath(t *testing.T) {
@@ -178,6 +179,54 @@ func TestIsIgnored(t *testing.T) {
 		if got := IsIgnored(tt.rel, rules); got != tt.want {
 			t.Fatalf("IsIgnored(%q) = %v, want %v", tt.rel, got, tt.want)
 		}
+	}
+}
+
+func TestShouldDeleteFileByAge(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(filePath, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	now := time.Now()
+
+	ok, err := ShouldDeleteFileByAge(filePath, 0, now)
+	if err != nil {
+		t.Fatalf("ShouldDeleteFileByAge: %v", err)
+	}
+	if !ok {
+		t.Fatal("minAgeSeconds=0 should allow deletion")
+	}
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Chtimes does not change creation time on Windows")
+	}
+
+	oldTime := now.Add(-2 * time.Hour)
+	if err := os.Chtimes(filePath, oldTime, oldTime); err != nil {
+		t.Fatalf("Chtimes: %v", err)
+	}
+
+	ok, err = ShouldDeleteFileByAge(filePath, 3600, now)
+	if err != nil {
+		t.Fatalf("ShouldDeleteFileByAge old file: %v", err)
+	}
+	if !ok {
+		t.Fatal("file older than minAgeSeconds should be deletable")
+	}
+
+	recentTime := now.Add(-10 * time.Second)
+	if err := os.Chtimes(filePath, recentTime, recentTime); err != nil {
+		t.Fatalf("Chtimes recent: %v", err)
+	}
+
+	ok, err = ShouldDeleteFileByAge(filePath, 3600, now)
+	if err != nil {
+		t.Fatalf("ShouldDeleteFileByAge recent file: %v", err)
+	}
+	if ok {
+		t.Fatal("file newer than minAgeSeconds should be kept")
 	}
 }
 

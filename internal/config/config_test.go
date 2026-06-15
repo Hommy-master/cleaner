@@ -62,6 +62,27 @@ func TestLoadValidConfig(t *testing.T) {
 	}
 }
 
+func TestValidateNegativeMinAgeSeconds(t *testing.T) {
+	cfg := &Config{Dirs: []DirConfig{{Path: absPath(t, "apps"), MinAgeSeconds: -1}}}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected validation error for negative minAgeSeconds")
+	}
+}
+
+func TestLoadDirMinAgeSeconds(t *testing.T) {
+	content := `{
+		"dirs": [{"path": "` + filepath.ToSlash(absPath(t, "apps", "JianyingPro")) + `", "minAgeSeconds": 3600}],
+		"files": []
+	}`
+	cfg, err := Load(writeConfigFile(t, content))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Dirs[0].MinAgeSeconds != 3600 {
+		t.Fatalf("MinAgeSeconds = %d, want 3600", cfg.Dirs[0].MinAgeSeconds)
+	}
+}
+
 func TestValidateEmptyDirPath(t *testing.T) {
 	cfg := &Config{Dirs: []DirConfig{{Path: ""}}}
 	if err := cfg.Validate(); err == nil {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
@@ -121,4 +122,31 @@ func IsIgnored(relPath string, rules []IgnoreRule) bool {
 		}
 	}
 	return false
+}
+
+// FileCreatedAt returns the creation time of path.
+// Windows uses the true creation time; other platforms fall back to modification time.
+func FileCreatedAt(path string) (time.Time, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return fileCreatedAt(info), nil
+}
+
+// ShouldDeleteFileByAge reports whether a file is old enough to delete.
+// When minAgeSeconds is 0, all files are eligible. Otherwise the file must have
+// been created at least minAgeSeconds before now.
+func ShouldDeleteFileByAge(path string, minAgeSeconds int, now time.Time) (bool, error) {
+	if minAgeSeconds <= 0 {
+		return true, nil
+	}
+
+	createdAt, err := FileCreatedAt(path)
+	if err != nil {
+		return false, err
+	}
+
+	age := now.Sub(createdAt)
+	return age >= time.Duration(minAgeSeconds)*time.Second, nil
 }

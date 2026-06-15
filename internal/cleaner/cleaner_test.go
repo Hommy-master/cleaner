@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"testing"
+	"time"
 
 	"cleaner/internal/config"
 	"cleaner/internal/util"
@@ -190,7 +192,7 @@ func TestRemoveDirContentsEmptyDir(t *testing.T) {
 	root := t.TempDir()
 	logger, _ := testLogger(t)
 	c := New(&config.Config{}, logger)
-	if err := c.removeDirContents(root, nil); err != nil {
+	if err := c.removeDirContents(root, nil, 0); err != nil {
 		t.Fatalf("removeDirContents: %v", err)
 	}
 	if _, err := os.Stat(root); err != nil {
@@ -219,6 +221,40 @@ func TestCleanDirPreservesIgnoredVersionDirectory(t *testing.T) {
 	assertExists(t, versionDir)
 	assertExists(t, nestedFile)
 	assertNotExists(t, otherFile)
+}
+
+func TestCleanDirRespectsMinAgeSeconds(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file age tests rely on modification time fallback or Chtimes")
+	}
+
+	root := t.TempDir()
+	oldFile := filepath.Join(root, "old.txt")
+	recentFile := filepath.Join(root, "recent.txt")
+	now := time.Now()
+
+	for _, p := range []string{oldFile, recentFile} {
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	if err := os.Chtimes(oldFile, now.Add(-2*time.Hour), now.Add(-2*time.Hour)); err != nil {
+		t.Fatalf("Chtimes old: %v", err)
+	}
+	if err := os.Chtimes(recentFile, now.Add(-10*time.Second), now.Add(-10*time.Second)); err != nil {
+		t.Fatalf("Chtimes recent: %v", err)
+	}
+
+	logger, _ := testLogger(t)
+	cfg := &config.Config{
+		Dirs: []config.DirConfig{
+			{Path: root, MinAgeSeconds: 3600},
+		},
+	}
+	New(cfg, logger).Run()
+
+	assertNotExists(t, oldFile)
+	assertExists(t, recentFile)
 }
 
 func TestCleanDirPreservesIgnoredFileOnly(t *testing.T) {

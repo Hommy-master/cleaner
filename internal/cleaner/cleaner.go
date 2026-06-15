@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"cleaner/internal/config"
 	"cleaner/internal/util"
@@ -80,7 +81,7 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 			c.logger.Printf("ERROR: resolve ignore rules for %q: %v", path, err)
 			return
 		}
-		if err := c.removeDirContents(path, rules); err != nil {
+		if err := c.removeDirContents(path, rules, dirCfg.MinAgeSeconds); err != nil {
 			c.logger.Printf("ERROR: clean directory %q: %v", path, err)
 			return
 		}
@@ -88,8 +89,9 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 	}
 }
 
-func (c *Cleaner) removeDirContents(root string, rules []util.IgnoreRule) error {
+func (c *Cleaner) removeDirContents(root string, rules []util.IgnoreRule, minAgeSeconds int) error {
 	root = filepath.Clean(root)
+	now := time.Now()
 
 	var dirs []string
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
@@ -121,6 +123,15 @@ func (c *Cleaner) removeDirContents(root string, rules []util.IgnoreRule) error 
 		if absErr != nil {
 			return fmt.Errorf("resolve absolute path for %q: %w", path, absErr)
 		}
+
+		shouldDelete, ageErr := util.ShouldDeleteFileByAge(path, minAgeSeconds, now)
+		if ageErr != nil {
+			return fmt.Errorf("check file age for %q: %w", absPath, ageErr)
+		}
+		if !shouldDelete {
+			return nil
+		}
+
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove file %q: %w", absPath, err)
 		}

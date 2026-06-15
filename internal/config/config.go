@@ -21,8 +21,9 @@ type Config struct {
 
 // DirConfig describes a directory to clean and its ignore list.
 type DirConfig struct {
-	Path   string   `json:"path"`
-	Ignore []string `json:"ignore"`
+	Path          string   `json:"path"`
+	Ignore        []string `json:"ignore"`
+	MinAgeSeconds int      `json:"minAgeSeconds"`
 }
 
 // Load reads and validates configuration from path.
@@ -54,6 +55,9 @@ func (c *Config) Validate() error {
 	for i, dir := range c.Dirs {
 		if err := util.ValidateDirPath(dir.Path); err != nil {
 			return fmt.Errorf("dirs[%d].path: %w", i, err)
+		}
+		if dir.MinAgeSeconds < 0 {
+			return fmt.Errorf("dirs[%d].minAgeSeconds: must be >= 0", i)
 		}
 	}
 
