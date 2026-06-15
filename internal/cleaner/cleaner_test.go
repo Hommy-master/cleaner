@@ -198,6 +198,49 @@ func TestRemoveDirContentsEmptyDir(t *testing.T) {
 	}
 }
 
+func TestCleanDirPreservesIgnoredVersionDirectory(t *testing.T) {
+	root := t.TempDir()
+	versionDir := filepath.Join(root, "8.9.0.13361")
+	nestedFile := filepath.Join(versionDir, "app.dll")
+	otherFile := filepath.Join(root, "other.txt")
+
+	if err := os.MkdirAll(versionDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	for _, p := range []string{nestedFile, otherFile} {
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+
+	logger, _ := testLogger(t)
+	New(cfgWithDir(root, "8.9.0.13361"), logger).Run()
+
+	assertExists(t, versionDir)
+	assertExists(t, nestedFile)
+	assertNotExists(t, otherFile)
+}
+
+func TestCleanDirPreservesIgnoredFileOnly(t *testing.T) {
+	root := t.TempDir()
+	keepFile := filepath.Join(root, "Configure.ini")
+	keepSimilar := filepath.Join(root, "Configure.ini.bak")
+	removeFile := filepath.Join(root, "remove.txt")
+
+	for _, p := range []string{keepFile, keepSimilar, removeFile} {
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+
+	logger, _ := testLogger(t)
+	New(cfgWithDir(root, "Configure.ini"), logger).Run()
+
+	assertExists(t, keepFile)
+	assertNotExists(t, keepSimilar)
+	assertNotExists(t, removeFile)
+}
+
 func TestCleanFileLogFormat(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "remove.txt")

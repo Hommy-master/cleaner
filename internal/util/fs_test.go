@@ -112,10 +112,54 @@ func TestNormalizeRelativePath(t *testing.T) {
 	}
 }
 
+func TestBuildIgnoreRules(t *testing.T) {
+	root := t.TempDir()
+
+	keepDir := filepath.Join(root, "8.9.0.13361")
+	keepFile := filepath.Join(root, "Configure.ini")
+	if err := os.Mkdir(keepDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(keepFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	rules, err := BuildIgnoreRules(root, []string{
+		"8.9.0.13361",
+		"Configure.ini",
+		"missing.txt",
+	})
+	if err != nil {
+		t.Fatalf("BuildIgnoreRules: %v", err)
+	}
+
+	want := map[string]bool{
+		"8.9.0.13361":   true,
+		"Configure.ini": false,
+		"missing.txt":   false,
+	}
+	if len(rules) != len(want) {
+		t.Fatalf("rules len = %d, want %d", len(rules), len(want))
+	}
+	for _, rule := range rules {
+		isDir, ok := want[rule.RelPath]
+		if !ok {
+			t.Fatalf("unexpected rule %q", rule.RelPath)
+		}
+		if rule.IsDir != isDir {
+			t.Fatalf("rule %q IsDir = %v, want %v", rule.RelPath, rule.IsDir, isDir)
+		}
+	}
+}
+
 func TestIsIgnored(t *testing.T) {
 	t.Parallel()
 
-	ignore := []string{"filename", "dir/test.exe", "keepdir"}
+	rules := []IgnoreRule{
+		{RelPath: "filename", IsDir: false},
+		{RelPath: "dir/test.exe", IsDir: false},
+		{RelPath: "keepdir", IsDir: true},
+	}
 
 	tests := []struct {
 		rel  string
@@ -124,14 +168,28 @@ func TestIsIgnored(t *testing.T) {
 		{rel: "filename", want: true},
 		{rel: "dir/test.exe", want: true},
 		{rel: "dir/other.exe", want: false},
+		{rel: "keepdir", want: true},
 		{rel: "keepdir/file.txt", want: true},
 		{rel: "keepdir/nested/x", want: true},
 		{rel: "remove.me", want: false},
 	}
 
 	for _, tt := range tests {
-		if got := IsIgnored(tt.rel, ignore); got != tt.want {
+		if got := IsIgnored(tt.rel, rules); got != tt.want {
 			t.Fatalf("IsIgnored(%q) = %v, want %v", tt.rel, got, tt.want)
 		}
+	}
+}
+
+func TestIsIgnoredFileDoesNotMatchPrefix(t *testing.T) {
+	t.Parallel()
+
+	rules := []IgnoreRule{{RelPath: "Configure.ini", IsDir: false}}
+
+	if IsIgnored("Configure.ini", rules) != true {
+		t.Fatal("expected Configure.ini to be ignored")
+	}
+	if IsIgnored("Configure.ini.bak", rules) {
+		t.Fatal("file ignore rule should not match Configure.ini.bak")
 	}
 }

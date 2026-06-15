@@ -75,7 +75,12 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 		c.logger.Printf("ERROR: %q is a file, not a directory, skipped", path)
 		return
 	case util.PathDirectory:
-		if err := c.removeDirContents(path, dirCfg.Ignore); err != nil {
+		rules, err := util.BuildIgnoreRules(path, dirCfg.Ignore)
+		if err != nil {
+			c.logger.Printf("ERROR: resolve ignore rules for %q: %v", path, err)
+			return
+		}
+		if err := c.removeDirContents(path, rules); err != nil {
 			c.logger.Printf("ERROR: clean directory %q: %v", path, err)
 			return
 		}
@@ -83,7 +88,7 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 	}
 }
 
-func (c *Cleaner) removeDirContents(root string, ignore []string) error {
+func (c *Cleaner) removeDirContents(root string, rules []util.IgnoreRule) error {
 	root = filepath.Clean(root)
 
 	var dirs []string
@@ -100,7 +105,7 @@ func (c *Cleaner) removeDirContents(root string, ignore []string) error {
 			return fmt.Errorf("relative path for %q: %w", path, err)
 		}
 
-		if util.IsIgnored(rel, ignore) {
+		if util.IsIgnored(rel, rules) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -132,7 +137,7 @@ func (c *Cleaner) removeDirContents(root string, ignore []string) error {
 		if err != nil {
 			return fmt.Errorf("relative path for %q: %w", dirPath, err)
 		}
-		if util.IsIgnored(rel, ignore) {
+		if util.IsIgnored(rel, rules) {
 			continue
 		}
 		if err := os.Remove(dirPath); err != nil && !os.IsNotExist(err) {

@@ -68,23 +68,55 @@ func NormalizeRelativePath(rel string) string {
 	return filepath.ToSlash(rel)
 }
 
+// IgnoreRule describes one resolved ignore entry under a cleanup root.
+type IgnoreRule struct {
+	RelPath string
+	IsDir   bool
+}
+
+// BuildIgnoreRules resolves ignore entries relative to root against the filesystem.
+func BuildIgnoreRules(root string, ignore []string) ([]IgnoreRule, error) {
+	root = filepath.Clean(root)
+	rules := make([]IgnoreRule, 0, len(ignore))
+
+	for _, item := range ignore {
+		rel := NormalizeRelativePath(item)
+		if rel == "" {
+			continue
+		}
+
+		fullPath := filepath.Join(root, rel)
+		kind, err := ClassifyPath(fullPath)
+		if err != nil {
+			return nil, fmt.Errorf("classify ignore path %q: %w", rel, err)
+		}
+
+		rules = append(rules, IgnoreRule{
+			RelPath: rel,
+			IsDir:   kind == PathDirectory,
+		})
+	}
+
+	return rules, nil
+}
+
 // IsIgnored reports whether relPath should be skipped according to ignore rules.
-// Ignore entries are relative paths from the configured directory root.
-func IsIgnored(relPath string, ignore []string) bool {
+// Directory rules protect the directory and everything beneath it.
+// File rules protect only the exact relative path.
+func IsIgnored(relPath string, rules []IgnoreRule) bool {
 	relPath = NormalizeRelativePath(relPath)
 	if relPath == "" {
 		return false
 	}
 
-	for _, item := range ignore {
-		item = NormalizeRelativePath(item)
-		if item == "" {
+	for _, rule := range rules {
+		if rule.IsDir {
+			if relPath == rule.RelPath || strings.HasPrefix(relPath, rule.RelPath+"/") {
+				return true
+			}
 			continue
 		}
-		if relPath == item {
-			return true
-		}
-		if strings.HasPrefix(relPath, item+"/") {
+		if relPath == rule.RelPath {
 			return true
 		}
 	}
