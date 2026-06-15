@@ -1,0 +1,14 @@
+{
+	"interval": 10,
+	"dirs": [
+		{
+			"path": "D:\\apps\\JianyingPro\\",
+			"ignore": [
+				"filename"
+			]
+		}
+	],
+	"files": [
+		"D:\\apps\\JianyingPro\\filename"
+	]
+}
