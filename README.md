@@ -66,7 +66,8 @@ cleaner/
 
 - 清理配置目录下的子目录和文件，**不删除**配置目录本身
 - `ignore` 会在清理前解析：若对应路径是**目录**，则保留该目录及其全部子内容；若是**文件**，则仅保留该文件本身
-- `minAgeSeconds` 约束待删文件：仅当文件创建时间距当前系统时间 **≥ N 秒** 时才删除；N 秒内创建的文件保留（Windows 使用创建时间，其他平台使用修改时间）
+- 不在忽略列表中、且其下没有受保护内容的子目录，会使用 `RemoveAll` **强制整目录删除**（即使目录非空）
+- `minAgeSeconds` 约束单独删除的文件；位于将被强制删除的子目录内的文件，会随目录一并删除（不受年龄限制）
 - 配置的 `path` 不存在、或 `path` 实际是文件：跳过并输出 ERROR 日志
 
 **文件 (`files`)**
@@ -75,6 +76,56 @@ cleaner/
 - 路径不存在：跳过并输出 ERROR 日志
 - 路径是目录：跳过并输出 ERROR 日志
 - 删除成功时输出文件的**绝对路径**
+
+### 行为示例
+
+以如下配置为例：
+
+```json
+{
+	"interval": 600,
+	"dirs": [
+		{
+			"path": "C:\\Users\\Administrator\\AppData\\Local\\JianyingPro\\Apps",
+			"ignore": [
+				"8.9.0.13361",
+				"Configure.ini",
+				"JianyingPro.exe",
+				"uninst.exe"
+			],
+			"minAgeSeconds": 3600
+		}
+	],
+	"files": []
+}
+```
+
+假设 `Apps` 目录当前结构如下：
+
+```
+Apps/
+├── 8.9.0.13361/          ← ignore 目录，整棵保留
+│   └── app.dll
+├── Configure.ini         ← ignore 文件，保留
+├── JianyingPro.exe       ← ignore 文件，保留
+├── uninst.exe            ← ignore 文件，保留
+├── cache/                ← 非 ignore，整目录 RemoveAll（非空也删）
+│   └── recent.tmp        ← 随 cache/ 一并删除（不受 minAgeSeconds 约束）
+└── loose.old             ← 根下普通文件，按 minAgeSeconds 判断是否删除
+```
+
+清理结果：
+
+| 路径 | 处理方式 |
+|------|----------|
+| `8.9.0.13361/` 及下属全部内容 | **保留**（ignore 目录） |
+| `Configure.ini` | **保留**（ignore 文件） |
+| `JianyingPro.exe` | **保留**（ignore 文件） |
+| `uninst.exe` | **保留**（ignore 文件） |
+| `cache/` | **强制删除**（非 ignore 目录，非空也删） |
+| `cache/recent.tmp` | **随 `cache/` 一并删除** |
+| `loose.old` | 创建时间 ≥ 3600 秒则**删除**，否则**保留** |
+| `Apps/` 本身 | **保留**（配置的根目录不删） |
 
 ## 日志格式
 

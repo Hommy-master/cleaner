@@ -277,6 +277,68 @@ func TestCleanDirPreservesIgnoredFileOnly(t *testing.T) {
 	assertNotExists(t, removeFile)
 }
 
+func TestCleanDirForceRemovesNonEmptyDirectory(t *testing.T) {
+	root := t.TempDir()
+	cacheDir := filepath.Join(root, "cache")
+	cacheFile := filepath.Join(cacheDir, "data.tmp")
+
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	logger, buf := testLogger(t)
+	cfg := &config.Config{
+		Dirs: []config.DirConfig{
+			{Path: root, MinAgeSeconds: 86400},
+		},
+	}
+	New(cfg, logger).Run()
+
+	assertNotExists(t, cacheDir)
+	assertNotExists(t, cacheFile)
+	if !bytes.Contains(buf.Bytes(), []byte("deleted directory:")) {
+		t.Fatalf("log = %q, want deleted directory message", buf.String())
+	}
+}
+
+func TestCleanDirDoesNotForceRemoveDirectoryWithProtectedDescendant(t *testing.T) {
+	root := t.TempDir()
+	workDir := filepath.Join(root, "work")
+	keepDir := filepath.Join(workDir, "keepdir")
+	tempDir := filepath.Join(workDir, "temp")
+	tempFile := filepath.Join(tempDir, "a.txt")
+
+	for _, p := range []string{keepDir, tempDir} {
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(keepDir, "keep.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write keep: %v", err)
+	}
+	if err := os.WriteFile(tempFile, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write temp: %v", err)
+	}
+
+	logger, _ := testLogger(t)
+	cfg := &config.Config{
+		Dirs: []config.DirConfig{
+			{
+				Path:   root,
+				Ignore: []string{"work/keepdir"},
+			},
+		},
+	}
+	New(cfg, logger).Run()
+
+	assertExists(t, workDir)
+	assertExists(t, keepDir)
+	assertNotExists(t, tempDir)
+}
+
 func TestCleanFileLogFormat(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "remove.txt")

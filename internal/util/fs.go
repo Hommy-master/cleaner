@@ -124,7 +124,26 @@ func IsIgnored(relPath string, rules []IgnoreRule) bool {
 	return false
 }
 
-// FileCreatedAt returns the creation time of path.
+// HasProtectedDescendant reports whether any ignore rule applies to relPath or a path beneath it.
+func HasProtectedDescendant(relPath string, rules []IgnoreRule) bool {
+	relPath = NormalizeRelativePath(relPath)
+	if relPath == "" {
+		return false
+	}
+
+	prefix := relPath + "/"
+	for _, rule := range rules {
+		if rule.RelPath == relPath || strings.HasPrefix(rule.RelPath, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// CanForceRemoveDir reports whether a directory may be recursively deleted.
+func CanForceRemoveDir(relPath string, rules []IgnoreRule) bool {
+	return !IsIgnored(relPath, rules) && !HasProtectedDescendant(relPath, rules)
+}
 // Windows uses the true creation time; other platforms fall back to modification time.
 func FileCreatedAt(path string) (time.Time, error) {
 	info, err := os.Stat(path)

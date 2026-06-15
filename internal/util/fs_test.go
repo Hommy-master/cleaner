@@ -230,6 +230,44 @@ func TestShouldDeleteFileByAge(t *testing.T) {
 	}
 }
 
+func TestHasProtectedDescendant(t *testing.T) {
+	t.Parallel()
+
+	rules := []IgnoreRule{
+		{RelPath: "keepdir", IsDir: true},
+		{RelPath: "nested/keep.exe", IsDir: false},
+	}
+
+	if !HasProtectedDescendant("keepdir", rules) {
+		t.Fatal("ignored directory should protect itself")
+	}
+	if !HasProtectedDescendant("nested", rules) {
+		t.Fatal("ignored file beneath directory should protect ancestor")
+	}
+	if HasProtectedDescendant("remove", rules) {
+		t.Fatal("directory without protected descendants should not match")
+	}
+}
+
+func TestCanForceRemoveDir(t *testing.T) {
+	t.Parallel()
+
+	rules := []IgnoreRule{
+		{RelPath: "keepdir", IsDir: true},
+		{RelPath: "nested/keep.exe", IsDir: false},
+	}
+
+	if CanForceRemoveDir("keepdir", rules) {
+		t.Fatal("ignored directory cannot be force removed")
+	}
+	if CanForceRemoveDir("nested", rules) {
+		t.Fatal("directory with protected descendant cannot be force removed")
+	}
+	if !CanForceRemoveDir("cache", rules) {
+		t.Fatal("eligible directory should be force removable")
+	}
+}
+
 func TestIsIgnoredFileDoesNotMatchPrefix(t *testing.T) {
 	t.Parallel()
 
