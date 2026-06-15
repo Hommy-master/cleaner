@@ -2,7 +2,6 @@ package cleaner
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -13,13 +12,13 @@ import (
 // Cleaner performs configured file and directory cleanup.
 type Cleaner struct {
 	cfg    *config.Config
-	logger *log.Logger
+	logger *util.Logger
 }
 
 // New creates a Cleaner with the given configuration and logger.
-func New(cfg *config.Config, logger *log.Logger) *Cleaner {
+func New(cfg *config.Config, logger *util.Logger) *Cleaner {
 	if logger == nil {
-		logger = log.Default()
+		logger = util.GetLogger()
 	}
 	return &Cleaner{cfg: cfg, logger: logger}
 }
@@ -47,11 +46,16 @@ func (c *Cleaner) cleanFile(path string) {
 	case util.PathDirectory:
 		c.logger.Printf("ERROR: %q is a directory, not a file, skipped", path)
 	case util.PathFile:
-		if err := os.Remove(path); err != nil {
-			c.logger.Printf("ERROR: delete file %q: %v", path, err)
+		absPath, absErr := filepath.Abs(path)
+		if absErr != nil {
+			c.logger.Printf("ERROR: resolve absolute path for %q: %v", path, absErr)
 			return
 		}
-		c.logger.Printf("deleted file: %s", path)
+		if err := os.Remove(path); err != nil {
+			c.logger.Printf("ERROR: delete file %q: %v", absPath, err)
+			return
+		}
+		c.logger.Printf("deleted file: %s", absPath)
 	}
 }
 
@@ -71,7 +75,7 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 		c.logger.Printf("ERROR: %q is a file, not a directory, skipped", path)
 		return
 	case util.PathDirectory:
-		if err := removeDirContents(path, dirCfg.Ignore); err != nil {
+		if err := c.removeDirContents(path, dirCfg.Ignore); err != nil {
 			c.logger.Printf("ERROR: clean directory %q: %v", path, err)
 			return
 		}
@@ -79,7 +83,7 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 	}
 }
 
-func removeDirContents(root string, ignore []string) error {
+func (c *Cleaner) removeDirContents(root string, ignore []string) error {
 	root = filepath.Clean(root)
 
 	var dirs []string
@@ -108,9 +112,14 @@ func removeDirContents(root string, ignore []string) error {
 			return nil
 		}
 
-		if err := os.Remove(path); err != nil {
-			return fmt.Errorf("remove file %q: %w", path, err)
+		absPath, absErr := filepath.Abs(path)
+		if absErr != nil {
+			return fmt.Errorf("resolve absolute path for %q: %w", path, absErr)
 		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("remove file %q: %w", absPath, err)
+		}
+		c.logger.Printf("deleted file: %s", absPath)
 		return nil
 	})
 	if err != nil {

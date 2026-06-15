@@ -1,14 +1,17 @@
 {
-	"interval": 10,
+	"interval": 60,
 	"dirs": [
 		{
-			"path": "D:\\apps\\JianyingPro\\",
+			"path": "C:\\Users\\Administrator\\AppData\\Local\\JianyingPro\\Apps",
 			"ignore": [
-				"filename"
+				"8.9.0.13361",
+				"Configure.ini",
+				"JianyingPro.exe",
+				"uninst.exe"
 			]
 		}
 	],
 	"files": [
-		"D:\\apps\\JianyingPro\\filename"
+		""
 	]
 }

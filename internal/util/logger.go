@@ -3,20 +3,35 @@ package util
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
+	"time"
 )
 
-const logFileName = "cleaner.log"
+const (
+	logFileName  = "cleaner.log"
+	logTimeLayout = "2006-01-02 15:04:05"
+)
+
+// Logger writes timestamped logs with source file and line number.
+type Logger struct {
+	mu  sync.Mutex
+	out io.Writer
+}
 
 var (
-	logger     *log.Logger
+	logger     *Logger
 	logFile    *os.File
 	loggerOnce sync.Once
 	loggerErr  error
 )
+
+// NewLogger creates a logger that writes to w.
+func NewLogger(w io.Writer) *Logger {
+	return &Logger{out: w}
+}
 
 // InitLogger configures logging to both stdout and cleaner.log in dir.
 func InitLogger(dir string) error {
@@ -28,18 +43,42 @@ func InitLogger(dir string) error {
 			return
 		}
 		logFile = f
-		w := io.MultiWriter(os.Stdout, f)
-		logger = log.New(w, "", log.LstdFlags)
+		logger = NewLogger(io.MultiWriter(os.Stdout, f))
 	})
 	return loggerErr
 }
 
-// Logger returns the shared logger instance.
-func Logger() *log.Logger {
+// GetLogger returns the shared logger instance.
+func GetLogger() *Logger {
 	if logger == nil {
-		return log.Default()
+		return NewLogger(os.Stderr)
 	}
 	return logger
+}
+
+// Printf writes a formatted log line.
+func (l *Logger) Printf(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args...))
+}
+
+// Print writes a log line.
+func (l *Logger) Print(v ...any) {
+	l.write(fmt.Sprint(v...))
+}
+
+func (l *Logger) write(msg string) {
+	_, file, line, ok := runtime.Caller(2)
+	if !ok {
+		file = "???"
+		line = 0
+	} else {
+		file = filepath.Base(file)
+	}
+	lineText := fmt.Sprintf("%s %s:%d %s\n", time.Now().Format(logTimeLayout), file, line, msg)
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_, _ = io.WriteString(l.out, lineText)
 }
 
 // ResetLoggerForTest resets the logger singleton for unit tests.

@@ -28,7 +28,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "init logger: %v\n", err)
 		os.Exit(1)
 	}
-	logger := util.Logger()
+	logger := util.GetLogger()
 
 	cfgPath := *configPath
 	if !filepath.IsAbs(cfgPath) {
