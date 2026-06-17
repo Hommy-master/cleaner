@@ -1,15 +1,10 @@
 {
-	"interval": 600,
+	"interval": 1,
 	"dirs": [
 		{
 			"path": "C:\\Users\\Administrator\\AppData\\Local\\JianyingPro\\Apps",
-			"ignore": [
-				"8.9.0.13361",
-				"Configure.ini",
-				"JianyingPro.exe",
-				"uninst.exe"
-			],
-			"minAgeSeconds": 1
+			"ignore": [],
+			"minAgeSeconds": 0
 		},
 		{
 			"path": "C:\\Users\\Administrator\\Videos",
