@@ -21,6 +21,7 @@ type Logger struct {
 	out     io.Writer
 	stdout  *os.File
 	logFile *os.File
+	debug   bool
 }
 
 var (
@@ -63,8 +64,26 @@ func GetLogger() *Logger {
 	return logger
 }
 
-// Printf writes a formatted log line.
+// SetDebug enables or disables debug-level log output.
+func (l *Logger) SetDebug(enabled bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.debug = enabled
+}
+
+// Printf writes a formatted log line (errors and deletion results).
 func (l *Logger) Printf(format string, args ...any) {
+	l.write(fmt.Sprintf(format, args...))
+}
+
+// Debugf writes a formatted log line only when debug mode is enabled.
+func (l *Logger) Debugf(format string, args ...any) {
+	l.mu.Lock()
+	debug := l.debug
+	l.mu.Unlock()
+	if !debug {
+		return
+	}
 	l.write(fmt.Sprintf(format, args...))
 }
 

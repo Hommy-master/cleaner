@@ -40,12 +40,13 @@ func main() {
 		logger.Printf("ERROR: load config: %v", err)
 		os.Exit(1)
 	}
+	logger.SetDebug(cfg.Debug)
 
-	logger.Printf("cleaner started, interval=%ds, config=%s", cfg.Interval, cfgPath)
+	logger.Debugf("cleaner started, interval=%ds, config=%s", cfg.Interval, cfgPath)
 
 	c := cleaner.New(cfg, logger)
 	runCleanup := func() {
-		logger.Printf("running cleanup task")
+		logger.Debugf("running cleanup task")
 		c.Run()
 	}
 
@@ -63,7 +64,7 @@ func main() {
 		case <-ticker.C:
 			runCleanup()
 		case sig := <-sigCh:
-			logger.Printf("received signal %v, shutting down", sig)
+			logger.Debugf("received signal %v, shutting down", sig)
 			return
 		}
 	}

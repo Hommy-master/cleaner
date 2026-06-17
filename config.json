@@ -1,5 +1,6 @@
 {
 	"interval": 1,
+	"debug": false,
 	"dirs": [
 		{
 			"path": "C:\\Users\\Administrator\\AppData\\Local\\JianyingPro\\Apps",

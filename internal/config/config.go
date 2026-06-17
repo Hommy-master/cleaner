@@ -15,6 +15,7 @@ const defaultIntervalSeconds = 60
 // Config holds cleaner runtime configuration.
 type Config struct {
 	Interval int         `json:"interval"`
+	Debug    bool        `json:"debug"`
 	Dirs     []DirConfig `json:"dirs"`
 	Files    []string    `json:"files"`
 }

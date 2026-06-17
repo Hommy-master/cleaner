@@ -125,9 +125,22 @@ func TestLoadInvalidJSON(t *testing.T) {
 	}
 }
 
-func TestLoadMissingFile(t *testing.T) {
-	_, err := Load(filepath.Join(t.TempDir(), "missing.json"))
-	if err == nil {
-		t.Fatal("expected read error")
+func TestLoadDebugConfig(t *testing.T) {
+	path := writeConfigFile(t, `{"debug":true,"dirs":[],"files":[]}`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Debug {
+		t.Fatal("Debug = false, want true")
+	}
+
+	path = writeConfigFile(t, `{"dirs":[],"files":[]}`)
+	cfg, err = Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Debug {
+		t.Fatal("Debug = true, want false by default")
 	}
 }

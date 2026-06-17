@@ -49,6 +49,28 @@ func TestLoggerFormat(t *testing.T) {
 	}
 }
 
+func TestLoggerDebugf(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewLogger(&buf)
+
+	logger.Debugf("debug only")
+	if buf.Len() != 0 {
+		t.Fatalf("Debugf without debug = %q, want empty", buf.String())
+	}
+
+	logger.SetDebug(true)
+	logger.Debugf("debug enabled")
+	if !strings.Contains(buf.String(), "debug enabled") {
+		t.Fatalf("Debugf with debug = %q, want debug enabled", buf.String())
+	}
+
+	buf.Reset()
+	logger.Printf("always logged")
+	if !strings.Contains(buf.String(), "always logged") {
+		t.Fatalf("Printf = %q, want always logged", buf.String())
+	}
+}
+
 func TestInitLoggerInvalidDir(t *testing.T) {
 	ResetLoggerForTest()
 

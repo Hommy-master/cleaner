@@ -87,7 +87,7 @@ func (c *Cleaner) cleanDir(dirCfg config.DirConfig) {
 			c.logger.Printf("ERROR: clean directory %q: %v", path, err)
 			return
 		}
-		c.logger.Printf("cleaned directory: %s", path)
+		c.logger.Debugf("cleaned directory: %s", path)
 	}
 }
 
