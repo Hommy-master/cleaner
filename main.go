@@ -42,7 +42,8 @@ func main() {
 	}
 	logger.SetDebug(cfg.Debug)
 
-	logger.Debugf("cleaner started, interval=%ds, config=%s", cfg.Interval, cfgPath)
+	logger.Printf("cleaner started, interval=%ds", cfg.Interval)
+	logger.Debugf("config=%s", cfgPath)
 
 	c := cleaner.New(cfg, logger)
 	runCleanup := func() {
